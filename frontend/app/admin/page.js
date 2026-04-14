@@ -1,13 +1,29 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { motion } from 'framer-motion';
-import { PlusCircle, MinusCircle, User, DollarSign, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PlusCircle, MinusCircle, User, DollarSign, Loader2, History, Package } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [formData, setFormData] = useState({ client_id: '', amount: '' });
+  const [activities, setActivities] = useState([]);
   const [status, setStatus] = useState({ type: '', message: '' });
   const [loading, setLoading] = useState(false);
+
+  const fetchActivities = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/admin/activities');
+      setActivities(res.data);
+    } catch (err) {
+      console.error('Failed to fetch admin activities', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchActivities();
+    const interval = setInterval(fetchActivities, 5000); // Polling every 5s
+    return () => clearInterval(interval);
+  }, []);
 
   const handleAction = async (action) => {
     if (!formData.client_id || !formData.amount) {
@@ -30,6 +46,7 @@ export default function AdminDashboard() {
         message: `${action === 'credit' ? 'Credited' : 'Debited'} successfully. New balance: $${res.data.balance}` 
       });
       setFormData({ ...formData, amount: '' });
+      fetchActivities(); // Immediate refresh
     } catch (err) {
       setStatus({ 
         type: 'error', 
@@ -51,8 +68,8 @@ export default function AdminDashboard() {
         <p className="text-foreground/60">Manage client wallet balances and transactions.</p>
       </header>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        <section className="glass p-8 space-y-6">
+      <div className="grid lg:grid-cols-2 gap-8">
+        <section className="glass p-8 space-y-6 self-start">
           <div className="flex items-center gap-3">
             <div className="bg-primary/20 p-2 rounded-lg text-primary">
               <User size={24} />
@@ -116,17 +133,69 @@ export default function AdminDashboard() {
           )}
         </section>
 
-        <aside className="glass p-8 flex flex-col justify-center items-center text-center space-y-4">
-          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary animate-pulse-slow">
-            <DollarSign size={40} />
+        {/* Transaction History Section */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 text-foreground/80">
+              <History size={20} />
+              <h2 className="text-xl font-bold">System Transactions</h2>
+            </div>
+            <div className="text-[10px] text-foreground/40 bg-white/5 px-2 py-1 rounded truncate">
+              Live Feed (Last 50)
+            </div>
           </div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-bold">Ledger Guidelines</h3>
-            <p className="text-sm text-foreground/60 leading-relaxed">
-              Credits add funds instantly. Debits require the client to have a sufficient balance. All actions are logged in the transaction ledger for audit purposes.
-            </p>
+          
+          <div className="glass overflow-hidden border-white/5 flex flex-col min-h-[400px]">
+            {activities.length > 0 ? (
+              <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto custom-scrollbar">
+                {activities.map((activity, index) => (
+                  <motion.div 
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.02 }}
+                    key={activity._id} 
+                    className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`p-2 rounded-lg ${
+                        activity.type === 'credit' ? 'bg-accent/20 text-accent' : 
+                        activity.type === 'debit' ? 'bg-red-500/20 text-red-500' : 
+                        'bg-primary/20 text-primary'
+                      }`}>
+                        {activity.type === 'credit' ? <PlusCircle size={16} /> : 
+                         activity.type === 'debit' ? <MinusCircle size={16} /> : 
+                         <Package size={16} />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-sm tracking-tight truncate max-w-[100px]">{activity.clientId}</p>
+                          <span className="text-[9px] text-foreground/30 uppercase font-black whitespace-nowrap">{activity.type.replace('_', ' ')}</span>
+                        </div>
+                        <p className="text-[9px] text-foreground/40">
+                          {new Date(activity.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`font-mono font-bold text-sm shrink-0 ${
+                      activity.type === 'credit' ? 'text-accent' : 'text-red-500'
+                    }`}>
+                      {activity.type === 'credit' ? '+' : '-'}${activity.amount.toFixed(2)}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-3">
+                <div className="bg-white/5 p-4 rounded-full text-foreground/20">
+                  <History size={32} />
+                </div>
+                <p className="text-xs text-foreground/40 italic">
+                  No system transactions recorded.
+                </p>
+              </div>
+            )}
           </div>
-        </aside>
+        </section>
       </div>
     </motion.div>
   );

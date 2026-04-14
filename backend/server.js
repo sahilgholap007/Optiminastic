@@ -93,6 +93,16 @@ app.post('/admin/wallet/debit', async (req, res) => {
   }
 });
 
+// 2.1 Admin - Get All Activities
+app.get('/admin/activities', async (req, res) => {
+  try {
+    const activities = await Transaction.find().sort({ timestamp: -1 }).limit(50);
+    res.json(activities);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Client APIs ---
 
 // 3. Client - Create Order

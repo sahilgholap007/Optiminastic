@@ -22,6 +22,7 @@ export default function ClientDashboard() {
   const [orderAmount, setOrderAmount] = useState('');
   const [recentOrder, setRecentOrder] = useState(null);
   const [activities, setActivities] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -37,6 +38,11 @@ export default function ClientDashboard() {
         headers: { 'client-id': id }
       });
       setActivities(activityRes.data);
+
+      const ordersRes = await axios.get('http://localhost:5000/orders', {
+        headers: { 'client-id': id }
+      });
+      setOrders(ordersRes.data);
       
       setError('');
     } catch (err) {
@@ -201,56 +207,112 @@ export default function ClientDashboard() {
         )}
       </AnimatePresence>
 
-      <section className="space-y-4">
-        <div className="flex items-center gap-3 text-foreground/80">
-          <History size={20} />
-          <h2 className="text-xl font-bold">Recent Activity</h2>
-        </div>
-        <div className="glass overflow-hidden border-white/5">
-          {activities.length > 0 ? (
-            <div className="divide-y divide-white/5">
-              {activities.map((activity, index) => (
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  key={activity._id} 
-                  className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`p-2 rounded-lg ${
-                      activity.type === 'credit' ? 'bg-accent/20 text-accent' : 
-                      activity.type === 'debit' ? 'bg-red-500/20 text-red-500' : 
-                      'bg-primary/20 text-primary'
+      <div className="grid md:grid-cols-2 gap-8">
+        <section className="space-y-4">
+          <div className="flex items-center gap-3 text-foreground/80">
+            <History size={20} />
+            <h2 className="text-xl font-bold">Recent Activity</h2>
+          </div>
+          <div className="glass overflow-hidden border-white/5 h-[400px] overflow-y-auto custom-scrollbar">
+            {activities.length > 0 ? (
+              <div className="divide-y divide-white/5 text-nowrap">
+                {activities.map((activity, index) => (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    key={activity._id} 
+                    className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`p-2 rounded-lg ${
+                        activity.type === 'credit' ? 'bg-accent/20 text-accent' : 
+                        activity.type === 'debit' ? 'bg-red-500/20 text-red-500' : 
+                        'bg-primary/20 text-primary'
+                      }`}>
+                        {activity.type === 'credit' ? <PlusCircle size={18} /> : 
+                         activity.type === 'debit' ? <MinusCircle size={18} /> : 
+                         <Package size={18} />}
+                      </div>
+                      <div>
+                        <p className="font-medium capitalize text-sm">
+                          {activity.type.replace('_', ' ')}
+                        </p>
+                        <p className="text-[10px] text-foreground/40">
+                          {new Date(activity.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`font-bold text-sm ${
+                      activity.type === 'credit' ? 'text-accent' : 'text-red-500'
                     }`}>
-                      {activity.type === 'credit' ? <PlusCircle size={18} /> : 
-                       activity.type === 'debit' ? <MinusCircle size={18} /> : 
-                       <Package size={18} />}
+                      {activity.type === 'credit' ? '+' : '-'}${activity.amount.toFixed(2)}
                     </div>
-                    <div>
-                      <p className="font-medium capitalize text-sm sm:text-base">
-                        {activity.type.replace('_', ' ')}
-                      </p>
-                      <p className="text-xs text-foreground/40 text-nowrap">
-                        {new Date(activity.timestamp).toLocaleString()}
-                      </p>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-12 text-center text-foreground/40 italic text-sm">
+                No activity found.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center gap-3 text-foreground/80">
+            <Package size={20} />
+            <h2 className="text-xl font-bold">Your Orders</h2>
+          </div>
+          <div className="glass overflow-hidden border-white/5 h-[400px] overflow-y-auto custom-scrollbar">
+            {orders.length > 0 ? (
+              <div className="divide-y divide-white/5">
+                {orders.map((order, index) => (
+                  <motion.div 
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    key={order._id} 
+                    className="p-4 hover:bg-white/5 transition-colors space-y-2"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-xs text-foreground/40 font-mono select-all">#{order._id}</p>
+                        <p className="text-lg font-bold tracking-tight">${order.amount.toFixed(2)}</p>
+                      </div>
+                      <div className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${
+                        order.status === 'fulfilled' ? 'bg-accent/20 text-accent' : 'bg-primary/20 text-primary'
+                      }`}>
+                        {order.status}
+                      </div>
                     </div>
-                  </div>
-                  <div className={`font-bold ${
-                    activity.type === 'credit' ? 'text-accent' : 'text-red-500'
-                  }`}>
-                    {activity.type === 'credit' ? '+' : '-'}${activity.amount.toFixed(2)}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-12 text-center text-foreground/40 italic">
-              {clientId ? 'No activity found for this client.' : 'Enter Client ID to see activity history.'}
-            </div>
-          )}
-        </div>
-      </section>
+                    
+                    {order.fulfillmentId && (
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-2 text-[10px] text-foreground/60">
+                          <CheckCircle2 size={12} className="text-accent" />
+                          <span>Fulfillment: <span className="font-mono text-accent">#{order.fulfillmentId}</span></span>
+                        </div>
+                        <a 
+                          href={`https://jsonplaceholder.typicode.com/posts/${order.fulfillmentId}`}
+                          target="_blank"
+                          className="text-[10px] text-primary hover:underline flex items-center gap-1"
+                        >
+                          View <ExternalLink size={10} />
+                        </a>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-12 text-center text-foreground/40 italic text-sm">
+                No orders placed yet.
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
